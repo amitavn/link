@@ -4,3 +4,7 @@ compatibility_date = "2026-06-08"
 
 [build]
 command = "cargo install -q \"worker-build@^0.8\" && worker-build --release"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "1ef7935eb8344cc89f5c9303c95b93a6"
