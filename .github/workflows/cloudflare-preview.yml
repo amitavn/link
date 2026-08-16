@@ -1,0 +1,52 @@
+name: Cloudflare Preview Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: cloudflare-preview-${{ github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build preview alias from branch name
+        id: alias
+        run: |
+          alias=$(printf '%s' "${{ github.head_ref }}" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/[^a-z0-9-]/-/g; s/-\+/-/g; s/^-//; s/-$//; s/^[0-9]\+//' \
+            | cut -c1-50)
+          echo "alias=${alias:-preview}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload preview version
+        id: upload
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: versions upload --env preview --preview-alias ${{ steps.alias.outputs.alias }}
+
+      - name: Comment preview URL on PR
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CMD_OUTPUT: ${{ steps.upload.outputs.command-output }}
+          ALIAS: ${{ steps.alias.outputs.alias }}
+        run: |
+          host=$(printf '%s\n' "$CMD_OUTPUT" \
+            | grep -oE 'https://[a-z0-9-]+\.workers\.dev' | head -1 \
+            | sed -E 's|https://[a-z0-9-]+\.([a-z0-9-]+\.workers\.dev)|\1|')
+          if [ -n "$host" ]; then
+            gh pr comment "${{ github.event.pull_request.number }}" \
+              --body "Preview deployment: https://${ALIAS}-link-preview.${host}"
+          fi
