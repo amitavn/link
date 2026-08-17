@@ -10,6 +10,7 @@ binding = "KV"
 id = "1ef7935eb8344cc89f5c9303c95b93a6"
 
 [env.preview]
+name = "link"
 workers_dev = true
 
 [[env.preview.kv_namespaces]]
