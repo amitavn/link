@@ -40,13 +40,12 @@ jobs:
         if: github.event.action == 'opened' || github.event.action == 'reopened'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CMD_OUTPUT: ${{ steps.upload.outputs.command-output }}
+          CMD_STDERR: ${{ steps.upload.outputs.command-stderr }}
           ALIAS: ${{ steps.alias.outputs.alias }}
         run: |
-          host=$(printf '%s\n' "$CMD_OUTPUT" \
-            | grep -oE 'https://[a-z0-9-]+\.workers\.dev' | head -1 \
-            | sed -E 's|https://[a-z0-9-]+\.([a-z0-9-]+\.workers\.dev)|\1|')
-          if [ -n "$host" ]; then
+          url=$(printf '%s\n' "$CMD_STDERR" \
+            | grep -oE "https://${ALIAS}-link\.[a-z0-9-]+\.workers\.dev" | head -1)
+          if [ -n "$url" ]; then
             gh pr comment "${{ github.event.pull_request.number }}" \
-              --body "Preview deployment: https://${ALIAS}-link-preview.${host}"
+              --body "Preview deployment: $url"
           fi
